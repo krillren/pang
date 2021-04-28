@@ -7,20 +7,11 @@ using namespace std;
 using namespace sf;
 
 const int LEFT_SIDE_MARGIN = 0;
-
-/*
-  ici on multiplie le nombre initial de bulles par 4
-  car il y a 3 stades possibles pour les bulles
-  a chaque nouveau stade, les bulles se divisent en 2
-  donc au 3 eme stade il y a 2 * 2 fois plus de bulles qu au 1er
-  1 * 2 * 2 = 4
-*/
-
 const int NB_BUBBLES = 3 * 4;
 
 const float BUBBLE_SIZE_FACTOR = 30.0f;
-const float pSpeed = 500.0f;
-const float gSpeed = 850.0f;
+const float PLAYER_SPEED = 500.0f;
+const float GRAPPLE_SPEED = 850.0f;
 
 struct Math {
   static float random() {
@@ -48,17 +39,9 @@ struct Circle {
   float Vx;
 };
 
-/*
-  variable globale creant une instance de RenderWindows
-  qui sera initialise dans le main puis utilisee dans les fonctions
-  menu et game
-*/
-
 RenderWindow window;
 
-/*
-  menu de fin de partie qui redirige le joueur sur le menu, sur le jeu ou qui permet de quitter la fenetre
-*/
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 int redirectWhenGameEnded() {
   Vector2u size = window.getSize();
@@ -73,6 +56,8 @@ int redirectWhenGameEnded() {
     redirectButton[i].y = ((size.y / ((NB_BUTTONS + 1.0f)) * (i + 1)) - (redirectButton[i].height) / 2.0f);
     redirectButton[i].visible = true;
   }
+  
+  /************************************************************************************************************************************************************************************/
 
   Texture redirectButtonTexture;
   if (!redirectButtonTexture.loadFromFile("resources/images/redirectButton.png")) {
@@ -98,7 +83,7 @@ int redirectWhenGameEnded() {
   redirectBackground.setTexture(redirectBgdTexture);
   redirectBackground.setOrigin(size.x / bgdSize.x - 1, size.y / bgdSize.y - 1);
 
-  /********************************************************************************/
+  /************************************************************************************************************************************************************************************/
 
   Font montserratFont;
 
@@ -136,7 +121,7 @@ int redirectWhenGameEnded() {
   exitGame.setFillColor(Color::White);
   exitGame.setStyle(Text::Bold);
 
-  /********************************************************************************/
+  /************************************************************************************************************************************************************************************/
 
   int highlightedButton = -1;
 
@@ -170,7 +155,7 @@ int redirectWhenGameEnded() {
       }
     }
 
-    window.clear(Color::White);
+    window.clear();
     window.draw(redirectBackground);
 
     for (int i = 0 ; i < NB_BUTTONS ; i++) {
@@ -192,10 +177,7 @@ int redirectWhenGameEnded() {
   return -1;
 }
 
-/*
-  fonction de menu
-  menu permet de quitter le jeu ou de commencer une partie
-*/
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 int menu() {
   Vector2u size = window.getSize();
@@ -206,6 +188,8 @@ int menu() {
   startButton.x = (size.x - startButton.width) / 2.0f;
   startButton.y = (size.y - startButton.height) / 2.0f;
   startButton.visible = true;
+
+  /************************************************************************************************************************************************************************************/
 
   Texture startButtonTexture;
   if (!startButtonTexture.loadFromFile("resources/images/startButton.png")) {
@@ -231,6 +215,8 @@ int menu() {
   menuBackground.setTexture(menuBgdTexture);
   menuBackground.setOrigin(size.x / bgdSize.x - 1.0f, size.y / bgdSize.y - 1.0f);
 
+  /************************************************************************************************************************************************************************************/
+
   bool highlighted = false;
 
   while (window.isOpen()) {
@@ -254,7 +240,7 @@ int menu() {
       }
     }
 
-    window.clear(Color::White);
+    window.clear();
     window.draw(menuBackground);
 
     if (startButton.visible) {
@@ -272,25 +258,57 @@ int menu() {
   return -1;
 }
 
-/*
-  fonction de fin de la partie
-  permet de rendre invisible toutes les entitees
-*/
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-int gameOverAnimation() {
+int endOfGame(Circle bubble[], int NB_BUBBLES, Rectangle player, Rectangle grapple, bool win, int reasonOfGameOver) {
   Vector2u size = window.getSize();
+  
+  for (int i = 0 ; i < NB_BUBBLES ; i++) {
+    bubble[i].visible = false;
+  }
+
+  player.visible = false;
+
+  grapple.visible = false;
+
+  /************************************************************************************************************************************************************************************/
 
   Texture gameOverBgdTexture;
-  if (!gameOverBgdTexture.loadFromFile("resources/images/gameOverBackground.png")) {
-    cout<<"loading failure"<<endl;
-    return 1;
-  }
   gameOverBgdTexture.setSmooth(true);
+
+  switch (reasonOfGameOver) {
+    case 0:
+      if (!gameOverBgdTexture.loadFromFile("resources/images/gameOverWinBackground.png")) {
+        cout<<"loading failure"<<endl;
+      return 1;
+      }
+      
+    break;
+
+    case 1:
+      if (!gameOverBgdTexture.loadFromFile("resources/images/gameOverCollisionBackground.png")) {
+        cout<<"loading failure"<<endl;
+      return 1;
+      }
+    break;
+
+    case 2:
+      if (!gameOverBgdTexture.loadFromFile("resources/images/gameOverTimeOutBackground.png")) {
+        cout<<"loading failure"<<endl;
+      return 1;
+      }
+    break;
+
+    default:
+    break;
+  }
 
   Sprite gameOverBackground;
   Vector2u bgdSize = gameOverBgdTexture.getSize();
   gameOverBackground.setTexture(gameOverBgdTexture);
   gameOverBackground.setOrigin(size.x / bgdSize.x - 1.0f, size.y / bgdSize.y - 1.0f);
+
+  /************************************************************************************************************************************************************************************/
 
   Clock clock;
 
@@ -309,88 +327,21 @@ int gameOverAnimation() {
 
     animationDuration += clock.restart().asSeconds();
 
-    if (animationDuration >= 2) {
+    window.clear();
+    window.draw(gameOverBackground);
+
+    window.display();
+
+    if (animationDuration >= 3.0f) {
       return 0;
     }
-
-    window.clear(Color::White);
-    window.draw(gameOverBackground);
-    window.display();
     
   }
 
   return -1;
 }
 
-int endOfGame(Circle bubble[], int NB_BUBBLES, Rectangle player, Rectangle grapple, bool win) {
-  Vector2u size = window.getSize();
-  
-  for (int i = 0 ; i < NB_BUBBLES ; i++) {
-      bubble[i].visible = false;
-  }
-
-  player.visible = false;
-
-  grapple.visible = false;
-
-  /********************************************************************************/
-
-  Font montserratFont;
-
-  if (!montserratFont.loadFromFile("resources/fonts/montserrat/Montserrat-Bold.ttf")) {
-    cout<<"loading failure"<<endl;
-    return -1;
-  }
-
-  const int TEXT_SIZES_ON_BUTTONS = 32;
-
-  Text winMessage;
-
-  winMessage.setFont(montserratFont);
-  winMessage.setString("\tYOU'VE WIN\nI DINDN'T KNOW THAT THIS GAME WAS WINNABLE\nYOU'RE THE BOSS");
-  winMessage.setCharacterSize(TEXT_SIZES_ON_BUTTONS);
-  winMessage.setPosition(size.x / 2 - winMessage.findCharacterPos(29).x, size.y / 2.0f);
-  winMessage.setFillColor(Color::White);
-  winMessage.setStyle(Text::Bold);
-
-  Text lossMessage;
-
-  lossMessage.setFont(montserratFont);
-  lossMessage.setString("\tYOU'VE LOST\nI'M PRETTY SURE YOU'LL WIN NEXT TIME");
-  lossMessage.setCharacterSize(TEXT_SIZES_ON_BUTTONS);
-  lossMessage.setPosition(size.x / 2 - lossMessage.findCharacterPos(27).x, size.y / 2.0f);
-  lossMessage.setFillColor(Color::Blue);
-  lossMessage.setStyle(Text::Bold);
-
-  /********************************************************************************/
-
-  Clock clock;
-
-  float animationDuration = 0.0f;
-
-  if (win) {
-
-    do {
-      animationDuration += clock.restart().asSeconds();
-      window.clear(Color::White);
-      window.draw(winMessage);
-      window.display();
-    } while (animationDuration <= 2);
-
-    gameOverAnimation();
-  } else {
-    do {
-      animationDuration += clock.restart().asSeconds();
-      window.clear(Color::White);
-      window.draw(lossMessage);
-      window.display();
-    } while (animationDuration <= 2);
-
-    gameOverAnimation();
-  }
-
-  return 0;
-}
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 bool bubbleCollisionWithOneBubble(Circle bubble1, Circle bubble2) {
   int test = (bubble1.x - bubble2.x) * (bubble1.x - bubble2.x) + (bubble1.y - bubble2.y) * (bubble1.y - bubble2.y);
@@ -461,7 +412,7 @@ void allocationOfNewBubbles(int start, int end, Circle bubble[], int newState, i
   }
 }
 
-int splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
+void splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
   Vector2u size = window.getSize();
 
   switch (bubble[bubbleHit].state) {
@@ -491,11 +442,9 @@ int splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
     break;
 
     default:
-      return -1;
+      return;
     break;
   }
-
-   return 0;
 }
 
 string setTimer(float timer) {
@@ -510,13 +459,9 @@ string setTimer(float timer) {
   return timerToDisplay;
 }
 
-/*
-  fonction de jeu
-  cette fonction est l'ensemble d'une partie de jeu
-  partie principale du programme
-*/
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
-int game () {
+int game() {
   Vector2u size = window.getSize();
 
   Rectangle player;
@@ -552,6 +497,8 @@ int game () {
     }
   }
 
+  /************************************************************************************************************************************************************************************/
+
   Texture grappleTexture;
   if (!grappleTexture.loadFromFile("resources/images/grapple.png")) {
     cout<<"loading failure"<<endl;
@@ -583,7 +530,7 @@ int game () {
   background.setTexture(bgdTexture);
   background.setOrigin(size.x / bgdSize.x -1, size.y / bgdSize.y -1);
 
-  /********************************************************************************/
+  /************************************************************************************************************************************************************************************/
 
   Font montserratFont;
 
@@ -612,7 +559,7 @@ int game () {
   preGameMessage.setFillColor(Color::Blue);
   preGameMessage.setStyle(Text::Bold);
 
-  /********************************************************************************/
+  /************************************************************************************************************************************************************************************/
 
   bool leftKey = false;
   bool rightKey = false;
@@ -626,7 +573,8 @@ int game () {
   int bubbleLeft = NB_BUBBLES;
   int bubbleHit = -1;
 
-  float timer = 360.0f;
+  float timer = 100.0f;
+  float endCounter = 0.0f;
 
   float gravity = 700.0f;
 
@@ -694,8 +642,8 @@ int game () {
 
     float dt = clock.restart().asSeconds();
 
-    float pDistance = pSpeed * dt;
-    float gDistance = gSpeed * dt;
+    float pDistance = PLAYER_SPEED * dt;
+    float gDistance = GRAPPLE_SPEED * dt;
     
     if (!gameStarted) {
       timerDisplay.setString(setTimer(timer));
@@ -715,11 +663,11 @@ int game () {
       if (rectangleShapeCollisionWithBubbles(player, bubble, NB_BUBBLES, &bubbleHit)) {
         gameStarted = false;
 
-        endOfGame(bubble, NB_BUBBLES, player, grapple, false);
+        endOfGame(bubble, NB_BUBBLES, player, grapple, false, 1);
       
         return 0;
       }
-        
+
       if (rectangleShapeCollisionWithBubbles(grapple, bubble, NB_BUBBLES, &bubbleHit)) {
         splitTheBubbles(bubble, bubbleHit, grapple.x + grapple.width / 2.0f);
         collisionGrappleOnBubble = true;
@@ -756,22 +704,22 @@ int game () {
           if (bubble[i].x + bubble[i].radius > size.x || bubble[i].x - bubble[i].radius < 0 + LEFT_SIDE_MARGIN) {
             
             bubble[i].Vx = -bubble[i].Vx;
-
           }
-
-          bubble[i].x = bubble[i].x + bubble[i].Vx;
-          
-          bubble[i].Vy = bubble[i].Vy + gravity * dt;
 
           if ((bubble[i].y + bubble[i].Vy * dt) + bubble[i].radius > size.y || (bubble[i].y + bubble[i].Vy * dt) - bubble[i].radius < 0) {
 
             bubble[i].Vy = - bubble[i].Vy;
             bubble[i].y = bubble[i].y + bubble[i].Vy * dt;
 
-          }else{
+          } else {
 
             bubble[i].y = bubble[i].y + bubble[i].Vy * dt;
+
           }
+
+          bubble[i].x = bubble[i].x + bubble[i].Vx;
+          bubble[i].Vy = bubble[i].Vy + gravity * dt;
+  
         }
       }
     }
@@ -779,16 +727,26 @@ int game () {
     if (timer <= 0.0f && bubbleLeft > 0) {
       gameStarted = false;
 
-      //endOfGame(bubble, NB_BUBBLES, player, grapple, false);
+      endCounter += dt;
 
-      return 0;
+      if (endCounter >= 1.0f) {
+
+        endOfGame(bubble, NB_BUBBLES, player, grapple, false, 2);
+
+        return 0;
+      }
 
     } else if (timer > 0.0f && bubbleLeft <= 0) {
       gameStarted = false;
 
-      //endOfGame(bubble, NB_BUBBLES, player, grapple, true);
+      endCounter += dt;
 
-      return 0;
+      if (endCounter >= 1.0f) {
+
+        endOfGame(bubble, NB_BUBBLES, player, grapple, true, 0);
+
+        return 0;
+      }
     }
 
     window.clear();
@@ -833,10 +791,7 @@ int game () {
   return -1;
 }
 
-/*
-  fonction main permettant d aller sur le menu
-  de faire une partie ou de quitter le programme
-*/
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 int main() {
   window.create(VideoMode(1280, 800), "Pang.V.alpha0.2");
