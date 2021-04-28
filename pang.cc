@@ -6,6 +6,23 @@
 using namespace std;
 using namespace sf;
 
+const int LEFT_SIDE_MARGIN = 0;
+
+/*
+  ici on multiplie le nombre initial de bulles par 4
+  car il y a 3 stades possibles pour les bulles
+  a chaque nouveau stade, les bulles se divisent en 2
+  donc au 3 eme stade il y a 2 * 2 fois plus de bulles qu au 1er
+  1 * 2 * 2 = 4
+*/
+
+const int NB_BUBBLES = 4 * 4;
+const int BUBBLE_SIZE_FACTOR = 30;
+
+const float pSpeed = 500.0f;
+const float gSpeed = 850.0f;
+const float bSpeed = 100.0f;
+
 struct Math {
   static float random() {
     static mt19937 engine(time(nullptr));
@@ -396,16 +413,26 @@ bool bubbleCollisionBubbles(Circle bubble[], int index) {
   return false;
 }
 
-bool rectangleCollisionOneBubble(Rectangle entity, Circle bubble){
-/*
-  float xNear = clamp(bubble.x, entity.x, entity.x + entity.width);
-  float yNear = clamp(bubble.y, entity.y, entity.y + entity.height);
-  float distanceX = bubble.x - xNear;
-  float distanceY = bubble.y - yNear;
+float clamp(float value, float min, float max){
+  if (value <= min) {
+    return min;
+  } else if (value >= max) {
+    return max;
+  } else {
+    return value;
+  }
+}
 
-  return((distanceX * distanceX) + (distanceY * distanceY) < (bubble.radius * bubble.radius));
-*/
-return false;
+bool rectangleCollisionOneBubble(Rectangle entity, Circle bubble){
+
+  float closestX = clamp(bubble.x, entity.x, entity.x + entity.width);
+  float closestY = clamp(bubble.y, entity.y, entity.y + entity.height);
+
+  float distanceX = bubble.x - closestX;
+  float distanceY = bubble.y - closestY;
+
+  float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+  return distanceSquared < (bubble.radius * bubble.radius);
 }
 
 bool rectangleShapeCollisionWithBubbles(Rectangle entity, Circle bubble[], int nbBubbles, int *bubbleHit) {
@@ -425,90 +452,53 @@ bool rectangleShapeCollisionWithBubbles(Rectangle entity, Circle bubble[], int n
   gerer absolument le respawn des bulles
 */
 
-int splitTheBubbles(Circle bubble[], int NB_BUBBLES, int bubbleHit, int playerPosX, const int BUBBLE_SIZE_FACTOR) {
+void allocationOfNewBubbles(int start, int end, Circle bubble[]) {
+  for (int i = start ; i <= end ; i++) {
+      
+  }
+}
+
+void allocationOfNewBubbles(int start, int end, Circle bubble[], int newState, int grapplePosX, Vector2u size) {
+  for (int i = start ; i <= end ; i++) {
+    bubble[i].state = newState;
+    bubble[i].radius = bubble[i].state * BUBBLE_SIZE_FACTOR * 0.75;
+    bubble[i].x = (i % 2 == 0) ? grapplePosX - bubble[i].radius : grapplePosX + bubble[i].radius;
+    bubble[i].y = size.y / 5;
+    bubble[i].visible = true;
+
+    if (i == start) {
+      bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
+      bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
+    } else {
+      bubble[i].lastBoardTuchedX = (bubble[start].lastBoardTuchedX) ? false : true;
+      bubble[i].lastBoardTuchedY = (bubble[start].lastBoardTuchedY) ? false : true;
+    } 
+  }
+}
+
+int splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
   Vector2u size = window.getSize();
 
   switch (bubble[bubbleHit].state) {
     case 3:
-    for (int i = bubbleHit ; i <= bubbleHit + 1 ; i++) {
-      bubble[i].state = 2;
-      bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
-      bubble[i].x = (i % 2 == 0) ? playerPosX - bubble[i].radius : playerPosX + bubble[i].radius;
-      bubble[i].y = size.y / 5;
-      bubble[i].visible = true;
-      bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-      bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-    }
+      allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 2, grapplePosX, size);
     break;
 
     case 2:
-    if (bubbleHit % 4 == 0) {
-      if (bubble[bubbleHit + 1].visible) {
-        for (int i = bubbleHit + 2; i <= bubbleHit + 3 ; i++) {
-          bubble[i].state = 1;
-          bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
-          bubble[i].x = (i % 2 == 0) ? playerPosX - bubble[i].radius : playerPosX + bubble[i].radius;
-          bubble[i].y = size.y / 5;
-          bubble[i].visible = true;
-          if (i == bubbleHit + 2) {
-            bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-            bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-          } else {
-            bubble[i].lastBoardTuchedX = (bubble[bubbleHit + 2].lastBoardTuchedX) ? false : true;
-            bubble[i].lastBoardTuchedY = (bubble[bubbleHit + 2].lastBoardTuchedY) ? false : true;
-          }
+      bubble[bubbleHit].visible = false;
+      if (bubbleHit % 4 == 0) {
+        if (bubble[bubbleHit + 1].visible) {
+          allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size);
+        } else {
+          allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size);
         }
-        bubble[bubbleHit].visible = false;
       } else {
-         for (int i = bubbleHit ; i <= bubbleHit + 1 ; i++) {
-          bubble[i].state = 1;
-          bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
-          bubble[i].x = (i % 2 == 0) ? playerPosX - bubble[i].radius : playerPosX + bubble[i].radius;
-          bubble[i].y = size.y / 5;
-          bubble[i].visible = true;
-          if (i == bubbleHit) {
-            bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-            bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-          } else {
-            bubble[i].lastBoardTuchedX = (bubble[bubbleHit].lastBoardTuchedX) ? false : true;
-            bubble[i].lastBoardTuchedY = (bubble[bubbleHit].lastBoardTuchedY) ? false : true;
-          }
+        if (bubble[bubbleHit - 1].visible) {
+          allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size);
+        } else {
+          allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size);
         }
       }
-    } else {
-      if (bubble[bubbleHit + 1].visible) {
-        for (int i = bubbleHit + 2; i <= bubbleHit + 3 ; i++) {
-          bubble[i].state = 1;
-          bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
-          bubble[i].x = (i % 2 == 0) ? playerPosX - bubble[i].radius : playerPosX + bubble[i].radius;
-          bubble[i].y = size.y / 5;
-          bubble[i].visible = true;
-          if (i == bubbleHit + 2) {
-            bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-            bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-          } else {
-            bubble[i].lastBoardTuchedX = (bubble[bubbleHit + 2].lastBoardTuchedX) ? false : true;
-            bubble[i].lastBoardTuchedY = (bubble[bubbleHit + 2].lastBoardTuchedY) ? false : true;
-          }
-        }
-        bubble[bubbleHit].visible = false;
-      } else {
-        for (int i = bubbleHit ; i <= bubbleHit + 1 ; i++) {
-          bubble[i].state = 1;
-          bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
-          bubble[i].x = (i % 2 == 0) ? playerPosX - bubble[i].radius : playerPosX + bubble[i].radius;
-          bubble[i].y = size.y / 5;
-          bubble[i].visible = true;
-          if (i == bubbleHit) {
-            bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-            bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-          } else {
-            bubble[i].lastBoardTuchedX = (bubble[bubbleHit].lastBoardTuchedX) ? false : true;
-            bubble[i].lastBoardTuchedY = (bubble[bubbleHit].lastBoardTuchedY) ? false : true;
-          }
-        }
-      }
-    }
     break;
 
     case 1:
@@ -533,12 +523,10 @@ int splitTheBubbles(Circle bubble[], int NB_BUBBLES, int bubbleHit, int playerPo
 int game () {
   Vector2u size = window.getSize();
 
-  const int LEFT_SIDE_MARGIN = 0;
-
   Rectangle player;
   player.width = size.x / 16.0f;
   player.height = size.y / 5.0f;
-  player.x = (size.x - player.width) / 2 + LEFT_SIDE_MARGIN;
+  player.x = (size.x - player.width) / 2.0f + LEFT_SIDE_MARGIN;
   player.y = size.y - player.height;
   player.visible = true;
   
@@ -549,32 +537,21 @@ int game () {
   grapple.y = size.y + grapple.height;
   grapple.visible = true;
 
-  /*
-    ici on multiplie le nombre initial de bulles par 4
-    car il y a 3 stades possibles pour les bulles
-    a chaque nouveau stade, les bulles se divisent en 2
-    donc au 3 eme stade il y a 2 * 2 fois plus de bulles qu au 1er
-    1 * 2 * 2 = 4
-  */
-
-  const int NB_BUBBLES = 3 * 4;
-  const int BUBBLE_SIZE_FACTOR = (int)((5.53f * (size.x * size.y)) / 265472);
-
   Circle bubble[NB_BUBBLES];
 
   for (int i = 0 ; i < NB_BUBBLES - 1; ++i) {
     if (i % 4 == 0) {
       do {
-        bubble[i].x = Math::random() * size.x + LEFT_SIDE_MARGIN;
-        bubble[i].y = Math::random() * size.y;
         bubble[i].state = 3;
         bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
+        bubble[i].x = bubble[i].radius + Math::random() * size.x + LEFT_SIDE_MARGIN;
+        bubble[i].y = bubble[i].radius + Math::random() * size.y;
         bubble[i].visible = true;
 
         bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
         bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
 
-      } while (bubble[i].x > size.x - bubble[i].radius * 2 + LEFT_SIDE_MARGIN ||
+      } while (bubble[i].x > size.x - bubble[i].radius ||
                bubble[i].y > size.y / 2 ||
                bubbleCollisionBubbles(bubble, i));
     }
@@ -605,12 +582,12 @@ int game () {
     return -1;
   }
   bgdTexture.setSmooth(true);
-
+/*
   Sprite background;
   Vector2u bgdSize = bgdTexture.getSize();
   background.setTexture(bgdTexture);
   background.setOrigin(size.x / bgdSize.x -1, size.y / bgdSize.y -1);
-
+*/
   /********************************************************************************/
 
   Font montserratFont;
@@ -660,10 +637,6 @@ int game () {
   Clock clock;
 
   while (window.isOpen()) {
-
-    /*
-      peut etre deplacer Event event hors de la boucle while pour la fenetre
-    */
 
     Event event;
 
@@ -722,13 +695,8 @@ int game () {
 
     float dt = clock.restart().asSeconds();
 
-    const float pSpeed = 500.0f;
     float pDistance = pSpeed * dt;
-
-    const float gSpeed = 850.0f;
     float gDistance = gSpeed * dt;
-
-    const float bSpeed = 100.0f;
     float bDistance = bSpeed * dt;
     
     if (!gameStarted) {
@@ -745,6 +713,19 @@ int game () {
     }
 
     if (gameStarted) {
+
+      if (rectangleShapeCollisionWithBubbles(player, bubble, NB_BUBBLES, &bubbleHit)) {
+        gameStarted = false;
+
+        endOfGame(bubble, NB_BUBBLES, player, grapple, false);
+      
+        return 0;
+      }
+      
+      if (rectangleShapeCollisionWithBubbles(grapple, bubble, NB_BUBBLES, &bubbleHit)) {
+        splitTheBubbles(bubble, bubbleHit, grapple.x + grapple.width / 2.0f);
+        collisionGrappleOnBubble = true;
+      }
       
       /*
         reglage du timer
@@ -801,7 +782,7 @@ int game () {
           grapple.y += gDistance;
         } else {
           grapple.x = player.x + player.width;
-          grapple.y = size.y;
+          grapple.y = size.y + 1.0f;
         }
       }
 
@@ -809,9 +790,9 @@ int game () {
         if (bubble[i].visible) {
           bubbleLeft++;
 
-          if (bubble[i].x + bubble[i].radius * 2 >= size.x) {
+          if (bubble[i].x + bubble[i].radius >= size.x) {
             bubble[i].lastBoardTuchedX = true;
-          } else if (bubble[i].x <= 0 + LEFT_SIDE_MARGIN) {
+          } else if (bubble[i].x - bubble[i].radius <= 0 + LEFT_SIDE_MARGIN) {
             bubble[i].lastBoardTuchedX = false;
           }
 
@@ -821,9 +802,9 @@ int game () {
             bubble[i].x += bDistance;
           }
 
-          if (bubble[i].y + bubble[i].radius * 2 >= size.y) {
+          if (bubble[i].y + bubble[i].radius >= size.y) {
             bubble[i].lastBoardTuchedY = true;
-          } else if (bubble[i].y <= 0) {
+          } else if (bubble[i].y - bubble[i].radius <= 0) {
             bubble[i].lastBoardTuchedY = false;
           }
 
@@ -837,21 +818,6 @@ int game () {
     }
 
     //cout<<bubbleLeft<<endl;
-
-    if (rectangleShapeCollisionWithBubbles(grapple, bubble, NB_BUBBLES, &bubbleHit)) {
-      splitTheBubbles(bubble, NB_BUBBLES, bubbleHit, player.x + player.width / 2.0f, BUBBLE_SIZE_FACTOR);
-      collisionGrappleOnBubble = true;
-    }
-
-
-    if (rectangleShapeCollisionWithBubbles(player, bubble, NB_BUBBLES, &bubbleHit)) {
-      cout<<bubbleHit<<endl; //to delete
-      gameStarted = false;
-
-      endOfGame(bubble, NB_BUBBLES, player, grapple, false);
-      
-      return 0;
-    }
 
     if (timer <= 0.0f && bubbleLeft > 0) {
       gameStarted = false;
@@ -883,6 +849,7 @@ int game () {
       if (bubble[i].visible) {
         CircleShape bShape;
         bShape.setRadius(bubble[i].radius);
+        bShape.setOrigin(bubble[i].radius, bubble[i].radius);
         bShape.setPosition(bubble[i].x, bubble[i].y);
         bShape.setTexture(&bubbleTexture);
         window.draw(bShape);
@@ -926,7 +893,9 @@ int main() {
 
     switch (redirectWhenGameEnded()) {
       case 0:
-        menu();
+        if (menu()) {
+          game();
+        }
       break;
 
       case 1:
