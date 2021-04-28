@@ -43,10 +43,10 @@ struct Circle {
   float x;
   float y;
   short state;
-  int radius;
+  float radius;
   bool visible = false;
-  bool lastBoardTuchedX = false;
-  bool lastBoardTuchedY = false;
+  float Vy;
+  float Vx;
 };
 
 /*
@@ -461,18 +461,12 @@ void allocationOfNewBubbles(int start, int end, Circle bubble[]) {
 void allocationOfNewBubbles(int start, int end, Circle bubble[], int newState, int grapplePosX, Vector2u size) {
   for (int i = start ; i <= end ; i++) {
     bubble[i].state = newState;
+    bubble[i].Vx=(Math::random() < 0.5f) ? 1 : -1;
+    bubble[i].Vy = 0;
     bubble[i].radius = bubble[i].state * BUBBLE_SIZE_FACTOR * 0.75;
     bubble[i].x = (i % 2 == 0) ? grapplePosX - bubble[i].radius : grapplePosX + bubble[i].radius;
     bubble[i].y = size.y / 5;
     bubble[i].visible = true;
-
-    if (i == start) {
-      bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-      bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-    } else {
-      bubble[i].lastBoardTuchedX = (bubble[start].lastBoardTuchedX) ? false : true;
-      bubble[i].lastBoardTuchedY = (bubble[start].lastBoardTuchedY) ? false : true;
-    } 
   }
 }
 
@@ -543,14 +537,14 @@ int game () {
     if (i % 4 == 0) {
       do {
         bubble[i].state = 3;
+        bubble[i].Vx=(Math::random() < 0.5f) ? 1 : -1;
+        bubble[i].Vy = 0;
         bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
         bubble[i].x = bubble[i].radius + Math::random() * size.x + LEFT_SIDE_MARGIN;
         bubble[i].y = bubble[i].radius + Math::random() * size.y;
         bubble[i].visible = true;
 
-        bubble[i].lastBoardTuchedX = (Math::random() < 0.5f) ? true : false;
-        bubble[i].lastBoardTuchedY = (Math::random() < 0.5f) ? true : false;
-
+        
       } while (bubble[i].x > size.x - bubble[i].radius ||
                bubble[i].y > size.y / 2 ||
                bubbleCollisionBubbles(bubble, i));
@@ -582,12 +576,12 @@ int game () {
     return -1;
   }
   bgdTexture.setSmooth(true);
-/*
+
   Sprite background;
   Vector2u bgdSize = bgdTexture.getSize();
   background.setTexture(bgdTexture);
   background.setOrigin(size.x / bgdSize.x -1, size.y / bgdSize.y -1);
-*/
+
   /********************************************************************************/
 
   Font montserratFont;
@@ -633,6 +627,8 @@ int game () {
   int intTimerForDisplay = (int)(timer);
   int previousTimer = (int)(timer);
   string timerToDisplay = "";
+
+  float gravity=70;
 
   Clock clock;
 
@@ -790,28 +786,20 @@ int game () {
         if (bubble[i].visible) {
           bubbleLeft++;
 
-          if (bubble[i].x + bubble[i].radius >= size.x) {
-            bubble[i].lastBoardTuchedX = true;
-          } else if (bubble[i].x - bubble[i].radius <= 0 + LEFT_SIDE_MARGIN) {
-            bubble[i].lastBoardTuchedX = false;
+          if (bubble[i].x + bubble[i].radius > size.x || bubble[i].x - bubble[i].radius < 0 + LEFT_SIDE_MARGIN) {
+            
+            bubble[i].Vx=-bubble[i].Vx;
           }
+          bubble[i].x = bubble[i].x + bubble[i].Vx;
+          
+          bubble[i].Vy = bubble[i].Vy + gravity * dt;
 
-          if (bubble[i].lastBoardTuchedX) {
-            bubble[i].x -= bDistance;
-          } else {
-            bubble[i].x += bDistance;
-          }
+          if ((bubble[i].y+bubble[i].Vy*dt) + bubble[i].radius > size.y || (bubble[i].y+bubble[i].Vy*dt) - bubble[i].radius < 0){
+            bubble[i].Vy = -bubble[i].Vy;
+             bubble[i].y = bubble[i].y+bubble[i].Vy*dt;
+          }else{
+            bubble[i].y = bubble[i].y+bubble[i].Vy*dt;
 
-          if (bubble[i].y + bubble[i].radius >= size.y) {
-            bubble[i].lastBoardTuchedY = true;
-          } else if (bubble[i].y - bubble[i].radius <= 0) {
-            bubble[i].lastBoardTuchedY = false;
-          }
-
-          if (bubble[i].lastBoardTuchedY) {
-            bubble[i].y -= bDistance;
-          } else {
-            bubble[i].y += bDistance;
           }
         }
       }
