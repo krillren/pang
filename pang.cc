@@ -16,12 +16,11 @@ const int LEFT_SIDE_MARGIN = 0;
   1 * 2 * 2 = 4
 */
 
-const int NB_BUBBLES = 4 * 4;
-const int BUBBLE_SIZE_FACTOR = 30;
+const int NB_BUBBLES = 3 * 4;
 
+const float BUBBLE_SIZE_FACTOR = 30.0f;
 const float pSpeed = 500.0f;
 const float gSpeed = 850.0f;
-const float bSpeed = 100.0f;
 
 struct Math {
   static float random() {
@@ -173,14 +172,12 @@ int redirectWhenGameEnded() {
 
     window.clear(Color::White);
     window.draw(redirectBackground);
+
     for (int i = 0 ; i < NB_BUTTONS ; i++) {
       RectangleShape cbShape;
       cbShape.setSize({ redirectButton[i].width, redirectButton[i].height });
       cbShape.setPosition(redirectButton[i].x, redirectButton[i].y);
-      if (highlightedButton == i)
-        cbShape.setTexture(&redirectButtonHighlightedTexture);
-      else
-        cbShape.setTexture(&redirectButtonTexture);
+      (highlightedButton == i) ? cbShape.setTexture(&redirectButtonHighlightedTexture) : cbShape.setTexture(&redirectButtonTexture);
       window.draw(cbShape);
     }
 
@@ -448,24 +445,18 @@ bool rectangleShapeCollisionWithBubbles(Rectangle entity, Circle bubble[], int n
   return false;
 }
 
-/*
-  gerer absolument le respawn des bulles
-*/
-
-void allocationOfNewBubbles(int start, int end, Circle bubble[]) {
-  for (int i = start ; i <= end ; i++) {
-      
-  }
-}
-
 void allocationOfNewBubbles(int start, int end, Circle bubble[], int newState, int grapplePosX, Vector2u size) {
   for (int i = start ; i <= end ; i++) {
     bubble[i].state = newState;
-    bubble[i].Vx=(Math::random() < 0.5f) ? 1 : -1;
-    bubble[i].Vy = 0;
-    bubble[i].radius = bubble[i].state * BUBBLE_SIZE_FACTOR * 0.75;
+    bubble[i].radius = bubble[i].state * BUBBLE_SIZE_FACTOR + 10;
     bubble[i].x = (i % 2 == 0) ? grapplePosX - bubble[i].radius : grapplePosX + bubble[i].radius;
     bubble[i].y = size.y / 5;
+    if (i == start) {
+      bubble[i].Vx = (i % 2 == 0) ? -1.0f : 1.0f;
+    } else {
+      bubble[i].Vx = (bubble[start].Vx == 1.0f) ? -1.0f : 1.0f;
+    }
+    bubble[i].Vy = 0.0f;
     bubble[i].visible = true;
   }
 }
@@ -476,22 +467,21 @@ int splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
   switch (bubble[bubbleHit].state) {
     case 3:
       allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 2, grapplePosX, size);
+      bubble[bubbleHit + 2].state = -1;
+      bubble[bubbleHit + 3].state = -1;
     break;
 
     case 2:
-      bubble[bubbleHit].visible = false;
-      if (bubbleHit % 4 == 0) {
-        if (bubble[bubbleHit + 1].visible) {
-          allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size);
-        } else {
-          allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size);
-        }
-      } else {
-        if (bubble[bubbleHit - 1].visible) {
-          allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size);
-        } else {
-          allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size);
-        }
+      if (bubbleHit % 4 == 0 && bubble[bubbleHit + 2].state == -1) {
+        allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size);
+        bubble[bubbleHit].visible = false;
+      } else if (bubbleHit % 4 == 0 && bubble[bubbleHit + 2].state != -1) {
+        allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size);
+      } else if (bubbleHit % 4 != 0 && bubble[bubbleHit + 2].state == -1) {
+        bubble[bubbleHit].visible = false;
+        allocationOfNewBubbles(bubbleHit + 1, bubbleHit + 2, bubble, 1, grapplePosX, size);
+      } else if (bubbleHit % 4 != 0 && bubble[bubbleHit + 2].state != -1) {
+        allocationOfNewBubbles(bubbleHit - 1, bubbleHit, bubble, 1, grapplePosX, size);
       }
     break;
 
@@ -506,6 +496,18 @@ int splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
   }
 
    return 0;
+}
+
+string setTimer(float timer) {
+  int intTimerForDisplay = (int)(timer);
+  string timerToDisplay = "";
+
+  timerToDisplay = to_string(intTimerForDisplay / 60);
+  timerToDisplay += " : ";
+  if (intTimerForDisplay % 60 < 10) {timerToDisplay += "0";}
+  timerToDisplay += to_string(intTimerForDisplay % 60);
+
+  return timerToDisplay;
 }
 
 /*
@@ -525,26 +527,25 @@ int game () {
   player.visible = true;
   
   Rectangle grapple;
-  grapple.width = size.x / 50.0f;
-  grapple.height = size.y * (3.0f / 4.0f);
+  grapple.width = size.x / 100.0f;
+  grapple.height = size.y;
   grapple.x = player.x + player.width + LEFT_SIDE_MARGIN;
-  grapple.y = size.y + grapple.height;
+  grapple.y = size.y + 1.0f;
   grapple.visible = true;
 
   Circle bubble[NB_BUBBLES];
 
-  for (int i = 0 ; i < NB_BUBBLES - 1; ++i) {
+  for (int i = 0 ; i < NB_BUBBLES ; ++i) {
     if (i % 4 == 0) {
       do {
         bubble[i].state = 3;
-        bubble[i].Vx=(Math::random() < 0.5f) ? 1 : -1;
+        bubble[i].Vx = (Math::random() < 0.5f) ? 1.0f : -1.0f;
         bubble[i].Vy = 0;
-        bubble[i].radius = BUBBLE_SIZE_FACTOR * bubble[i].state;
+        bubble[i].radius = bubble[i].state * BUBBLE_SIZE_FACTOR + 10;
         bubble[i].x = bubble[i].radius + Math::random() * size.x + LEFT_SIDE_MARGIN;
         bubble[i].y = bubble[i].radius + Math::random() * size.y;
         bubble[i].visible = true;
 
-        
       } while (bubble[i].x > size.x - bubble[i].radius ||
                bubble[i].y > size.y / 2 ||
                bubbleCollisionBubbles(bubble, i));
@@ -617,18 +618,17 @@ int game () {
   bool rightKey = false;
   bool spaceKey = false;
   bool enterKey = false;
+  
   bool gameStarted = false;
   bool collisionGrappleOnBubble = false;
+  bool topTuched = false;
+
   int bubbleLeft = NB_BUBBLES;
   int bubbleHit = -1;
 
-  float counterGrapple = 0.0f;
   float timer = 360.0f;
-  int intTimerForDisplay = (int)(timer);
-  int previousTimer = (int)(timer);
-  string timerToDisplay = "";
 
-  float gravity=70;
+  float gravity = 700.0f;
 
   Clock clock;
 
@@ -656,8 +656,7 @@ int game () {
           break;
 
           case Keyboard::Space:
-            if (grapple.y >= size.y)
-              spaceKey = true;
+            spaceKey = true;
           break;
 
           case Keyboard::Enter:
@@ -679,6 +678,10 @@ int game () {
             rightKey = false;
           break;
 
+          case Keyboard::Space:
+            spaceKey = false;
+          break;
+
           case Keyboard::Enter:
             enterKey = false;
           break;
@@ -693,14 +696,9 @@ int game () {
 
     float pDistance = pSpeed * dt;
     float gDistance = gSpeed * dt;
-    float bDistance = bSpeed * dt;
     
     if (!gameStarted) {
-      timerToDisplay = to_string(intTimerForDisplay / 60);
-      timerToDisplay += " : ";
-      if (intTimerForDisplay % 60 < 10) {timerToDisplay += "0";}
-      timerToDisplay += to_string(intTimerForDisplay % 60);
-      timerDisplay.setString(timerToDisplay);
+      timerDisplay.setString(setTimer(timer));
     }
 
     if (!gameStarted && enterKey) {
@@ -709,6 +707,10 @@ int game () {
     }
 
     if (gameStarted) {
+      
+      timer -= dt;
+
+      timerDisplay.setString(setTimer(timer));
 
       if (rectangleShapeCollisionWithBubbles(player, bubble, NB_BUBBLES, &bubbleHit)) {
         gameStarted = false;
@@ -717,43 +719,20 @@ int game () {
       
         return 0;
       }
-      
+        
       if (rectangleShapeCollisionWithBubbles(grapple, bubble, NB_BUBBLES, &bubbleHit)) {
         splitTheBubbles(bubble, bubbleHit, grapple.x + grapple.width / 2.0f);
         collisionGrappleOnBubble = true;
       }
-      
-      /*
-        reglage du timer
-      */
 
-      timer -= dt;
-      intTimerForDisplay = (int)(timer);
-
-
-      if (previousTimer > timer) {
-        timerToDisplay = to_string(intTimerForDisplay / 60);
-        timerToDisplay += " : ";
-        if (intTimerForDisplay % 60 < 10) {timerToDisplay += "0";}
-        timerToDisplay += to_string(intTimerForDisplay % 60);
-      }
-
-      previousTimer = intTimerForDisplay;
-
-      timerDisplay.setString(timerToDisplay);
-
-      /*
-        fin du reglage
-      */
-
-      if (collisionGrappleOnBubble) {
-        spaceKey = false;
+      if (grapple.y <= 0.0f || collisionGrappleOnBubble) {
+        grapple.x = player.x + player.width / 2.0f + grapple.width / 2.0f;
+        grapple.y = size.y + 1;
         collisionGrappleOnBubble = false;
+        topTuched = false;
       }
 
-      bubbleLeft = 0;
-
-      if (leftKey && player.x > 0 + LEFT_SIDE_MARGIN) {
+      if (leftKey && player.x > 0.0f + LEFT_SIDE_MARGIN) {
         player.x -= pDistance;
       }
 
@@ -761,68 +740,58 @@ int game () {
         player.x += pDistance;
       }
 
-      if (spaceKey && grapple.y + grapple.height > size.y) {
+      if (spaceKey || topTuched) {
         grapple.y -= gDistance;
-
-        if (grapple.y + grapple.height < size.y)
-          grapple.y = size.y - grapple.height;
-      }
-
-      if (spaceKey) {
-        counterGrapple += dt;
-        if (counterGrapple >= 1.0f)
-          spaceKey = false;
+        topTuched = true;
       } else {
-        counterGrapple = 0.0f;
-        if (grapple.y < size.y) {
-          grapple.y += gDistance;
-        } else {
-          grapple.x = player.x + player.width;
-          grapple.y = size.y + 1.0f;
-        }
+        grapple.x = player.x + player.width / 2.0f + grapple.width / 2.0f;
       }
+
+      bubbleLeft = 0;
 
       for (int i = 0 ; i < NB_BUBBLES ; i++) {
         if (bubble[i].visible) {
           bubbleLeft++;
-
+          
           if (bubble[i].x + bubble[i].radius > size.x || bubble[i].x - bubble[i].radius < 0 + LEFT_SIDE_MARGIN) {
             
-            bubble[i].Vx=-bubble[i].Vx;
+            bubble[i].Vx = -bubble[i].Vx;
+
           }
+
           bubble[i].x = bubble[i].x + bubble[i].Vx;
           
           bubble[i].Vy = bubble[i].Vy + gravity * dt;
 
-          if ((bubble[i].y+bubble[i].Vy*dt) + bubble[i].radius > size.y || (bubble[i].y+bubble[i].Vy*dt) - bubble[i].radius < 0){
-            bubble[i].Vy = -bubble[i].Vy;
-             bubble[i].y = bubble[i].y+bubble[i].Vy*dt;
-          }else{
-            bubble[i].y = bubble[i].y+bubble[i].Vy*dt;
+          if ((bubble[i].y + bubble[i].Vy * dt) + bubble[i].radius > size.y || (bubble[i].y + bubble[i].Vy * dt) - bubble[i].radius < 0) {
 
+            bubble[i].Vy = - bubble[i].Vy;
+            bubble[i].y = bubble[i].y + bubble[i].Vy * dt;
+
+          }else{
+
+            bubble[i].y = bubble[i].y + bubble[i].Vy * dt;
           }
         }
       }
     }
 
-    //cout<<bubbleLeft<<endl;
-
     if (timer <= 0.0f && bubbleLeft > 0) {
       gameStarted = false;
 
-      endOfGame(bubble, NB_BUBBLES, player, grapple, false);
+      //endOfGame(bubble, NB_BUBBLES, player, grapple, false);
 
       return 0;
 
     } else if (timer > 0.0f && bubbleLeft <= 0) {
       gameStarted = false;
 
-      endOfGame(bubble, NB_BUBBLES, player, grapple, true);
+      //endOfGame(bubble, NB_BUBBLES, player, grapple, true);
 
       return 0;
     }
 
-    window.clear(Color::White);
+    window.clear();
     window.draw(background);
 
     if (player.visible) {
@@ -870,7 +839,7 @@ int game () {
 */
 
 int main() {
-  window.create(VideoMode(1280, 800), "Pang");
+  window.create(VideoMode(1280, 800), "Pang.V.alpha0.2");
   window.setVerticalSyncEnabled(true);
 
   if (menu()) {
