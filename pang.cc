@@ -372,17 +372,14 @@ float clamp(float value, float min, float max){
 }
 
 bool rectangleCollisionOneBubble(Rectangle entity, Circle bubble){
-  /*
   float closestX = clamp(bubble.x, entity.x, entity.x + entity.width);
   float closestY = clamp(bubble.y, entity.y, entity.y + entity.height);
-
+  
   float distanceX = bubble.x - closestX;
   float distanceY = bubble.y - closestY;
 
   float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
   return distanceSquared < (bubble.radius * bubble.radius);
-  */
- return false;
 }
 
 bool rectangleShapeCollisionWithBubbles(Rectangle entity, Circle bubble[], int nbBubbles, int *bubbleHit) {
@@ -676,7 +673,7 @@ int game() {
       }
 
       if (grapple.y <= 0.0f || collisionGrappleOnBubble) {
-        grapple.x = player.x + player.width / 2.0f + grapple.width / 2.0f;
+        grapple.x = player.x + player.width / 2.0f - grapple.width / 2.0f;
         grapple.y = size.y + 1;
         collisionGrappleOnBubble = false;
         topTuched = false;
@@ -694,7 +691,7 @@ int game() {
         grapple.y -= gDistance;
         topTuched = true;
       } else {
-        grapple.x = player.x + player.width / 2.0f + grapple.width / 2.0f;
+        grapple.x = player.x + player.width / 2.0f - grapple.width / 2.0f;
       }
 
       bubbleLeft = 0;
@@ -757,6 +754,14 @@ int game() {
     window.clear();
     window.draw(background);
 
+    if (grapple.visible) {
+      RectangleShape gShape;
+      gShape.setSize({ grapple.width, grapple.height });
+      gShape.setPosition(grapple.x, grapple.y);
+      gShape.setTexture(&grappleTexture);
+      window.draw(gShape);
+    }
+
     if (player.visible) {
       RectangleShape pShape;
       pShape.setSize({ player.width, player.height });
@@ -774,14 +779,6 @@ int game() {
         bShape.setTexture(&bubbleTexture);
         window.draw(bShape);
       }
-    }
-
-    if (grapple.visible) {
-      RectangleShape gShape;
-      gShape.setSize({ grapple.width, grapple.height });
-      gShape.setPosition(grapple.x, grapple.y);
-      gShape.setTexture(&grappleTexture);
-      window.draw(gShape);
     }
 
     if (!gameStarted) {
