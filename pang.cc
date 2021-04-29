@@ -372,7 +372,7 @@ float clamp(float value, float min, float max){
 }
 
 bool rectangleCollisionOneBubble(Rectangle entity, Circle bubble){
-
+  /*
   float closestX = clamp(bubble.x, entity.x, entity.x + entity.width);
   float closestY = clamp(bubble.y, entity.y, entity.y + entity.height);
 
@@ -381,6 +381,8 @@ bool rectangleCollisionOneBubble(Rectangle entity, Circle bubble){
 
   float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
   return distanceSquared < (bubble.radius * bubble.radius);
+  */
+ return false;
 }
 
 bool rectangleShapeCollisionWithBubbles(Rectangle entity, Circle bubble[], int nbBubbles, int *bubbleHit) {
@@ -396,12 +398,12 @@ bool rectangleShapeCollisionWithBubbles(Rectangle entity, Circle bubble[], int n
   return false;
 }
 
-void allocationOfNewBubbles(int start, int end, Circle bubble[], int newState, int grapplePosX, Vector2u size) {
+void allocationOfNewBubbles(int start, int end, Circle bubble[], int newState, int grapplePosX, Vector2u size, float posBubble) {
   for (int i = start ; i <= end ; i++) {
     bubble[i].state = newState;
     bubble[i].radius = bubble[i].state * BUBBLE_SIZE_FACTOR + 10;
     bubble[i].x = (i % 2 == 0) ? grapplePosX - bubble[i].radius : grapplePosX + bubble[i].radius;
-    bubble[i].y = size.y / 5;
+    bubble[i].y = posBubble;
     if (i == start) {
       bubble[i].Vx = (i % 2 == 0) ? -1.0f : 1.0f;
     } else {
@@ -417,22 +419,22 @@ void splitTheBubbles(Circle bubble[], int bubbleHit, int grapplePosX) {
 
   switch (bubble[bubbleHit].state) {
     case 3:
-      allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 2, grapplePosX, size);
+      allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 2, grapplePosX, size, bubble[bubbleHit].y);
       bubble[bubbleHit + 2].state = -1;
       bubble[bubbleHit + 3].state = -1;
     break;
 
     case 2:
       if (bubbleHit % 4 == 0 && bubble[bubbleHit + 2].state == -1) {
-        allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size);
+        allocationOfNewBubbles(bubbleHit + 2, bubbleHit + 3, bubble, 1, grapplePosX, size, bubble[bubbleHit].y);
         bubble[bubbleHit].visible = false;
       } else if (bubbleHit % 4 == 0 && bubble[bubbleHit + 2].state != -1) {
-        allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size);
+        allocationOfNewBubbles(bubbleHit, bubbleHit + 1, bubble, 1, grapplePosX, size, bubble[bubbleHit].y);
       } else if (bubbleHit % 4 != 0 && bubble[bubbleHit + 2].state == -1) {
         bubble[bubbleHit].visible = false;
-        allocationOfNewBubbles(bubbleHit + 1, bubbleHit + 2, bubble, 1, grapplePosX, size);
+        allocationOfNewBubbles(bubbleHit + 1, bubbleHit + 2, bubble, 1, grapplePosX, size, bubble[bubbleHit].y);
       } else if (bubbleHit % 4 != 0 && bubble[bubbleHit + 2].state != -1) {
-        allocationOfNewBubbles(bubbleHit - 1, bubbleHit, bubble, 1, grapplePosX, size);
+        allocationOfNewBubbles(bubbleHit - 1, bubbleHit, bubble, 1, grapplePosX, size, bubble[bubbleHit].y);
       }
     break;
 
@@ -706,9 +708,13 @@ int game() {
             bubble[i].Vx = -bubble[i].Vx;
           }
 
+          bubble[i].x = bubble[i].x + bubble[i].Vx;
+          bubble[i].Vy = bubble[i].Vy + gravity * dt;
+
           if ((bubble[i].y + bubble[i].Vy * dt) + bubble[i].radius > size.y || (bubble[i].y + bubble[i].Vy * dt) - bubble[i].radius < 0) {
 
             bubble[i].Vy = - bubble[i].Vy;
+            bubble[i].Vy = bubble[i].Vy + gravity * dt;
             bubble[i].y = bubble[i].y + bubble[i].Vy * dt;
 
           } else {
@@ -717,8 +723,7 @@ int game() {
 
           }
 
-          bubble[i].x = bubble[i].x + bubble[i].Vx;
-          bubble[i].Vy = bubble[i].Vy + gravity * dt;
+          
   
         }
       }
